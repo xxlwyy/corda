@@ -3,6 +3,7 @@ package net.corda.node.services.persistence
 import com.google.common.annotations.VisibleForTesting
 import net.corda.core.bufferUntilSubscribed
 import net.corda.core.crypto.SecureHash
+import net.corda.core.messaging.SameType
 import net.corda.core.node.services.TransactionStorage
 import net.corda.core.transactions.SignedTransaction
 import net.corda.node.utilities.*
@@ -11,6 +12,7 @@ import org.jetbrains.exposed.sql.exposedLogger
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import rx.Observable
 import rx.subjects.PublishSubject
+import rx.subjects.Subject
 import java.util.Collections.synchronizedMap
 
 class DBTransactionStorage : TransactionStorage {
@@ -58,12 +60,12 @@ class DBTransactionStorage : TransactionStorage {
         }
     }
 
-    val updatesPublisher = PublishSubject.create<SignedTransaction>().toSerialized()
+    private val updatesPublisher: Subject<SignedTransaction, SignedTransaction> = PublishSubject.create<SignedTransaction>().toSerialized()
     override val updates: Observable<SignedTransaction> = updatesPublisher.wrapWithDatabaseTransaction()
 
-    override fun track(): Pair<List<SignedTransaction>, Observable<SignedTransaction>> {
-        synchronized(txStorage) {
-            return Pair(txStorage.values.toList(), updatesPublisher.bufferUntilSubscribed().wrapWithDatabaseTransaction())
+    override fun track(): SameType<SignedTransaction> {
+        return synchronized(txStorage) {
+            SameType(txStorage.values.toList(), updatesPublisher.bufferUntilSubscribed().wrapWithDatabaseTransaction())
         }
     }
 

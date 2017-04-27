@@ -3,11 +3,9 @@ package net.corda.testing.node
 import net.corda.core.contracts.Attachment
 import net.corda.core.contracts.PartyAndReference
 import net.corda.core.crypto.*
-import net.corda.core.flows.FlowInitiator
-import net.corda.core.flows.FlowLogic
-import net.corda.core.flows.FlowStateMachine
 import net.corda.core.flows.StateMachineRunId
 import net.corda.core.messaging.MessagingService
+import net.corda.core.messaging.SameType
 import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.ServiceHub
@@ -30,6 +28,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.KeyPair
 import java.security.PrivateKey
@@ -111,7 +110,7 @@ class MockKeyManagementService(vararg initialKeys: KeyPair) : SingletonSerialize
 class MockAttachmentStorage : AttachmentStorage {
     val files = HashMap<SecureHash, ByteArray>()
     override var automaticallyExtractAttachments = false
-    override var storePath = Paths.get("")
+    override var storePath: Path = Paths.get("")
 
     override fun openAttachment(id: SecureHash): Attachment? {
         val f = files[id] ?: return null
@@ -144,9 +143,7 @@ class MockStateMachineRecordedTransactionMappingStorage(
 ) : StateMachineRecordedTransactionMappingStorage by storage
 
 open class MockTransactionStorage : TransactionStorage {
-    override fun track(): Pair<List<SignedTransaction>, Observable<SignedTransaction>> {
-        return Pair(txns.values.toList(), _updatesPublisher)
-    }
+    override fun track(): SameType<SignedTransaction> = SameType(txns.values.toList(), _updatesPublisher)
 
     private val txns = HashMap<SecureHash, SignedTransaction>()
 
@@ -171,6 +168,7 @@ open class MockTransactionStorage : TransactionStorage {
 @ThreadSafe
 class MockStorageService(override val attachments: AttachmentStorage = MockAttachmentStorage(),
                          override val validatedTransactions: TransactionStorage = MockTransactionStorage(),
+                         @Suppress("OverridingDeprecatedMember")
                          override val uploaders: List<FileUploader> = listOf<FileUploader>(),
                          override val stateMachineRecordedTransactionMapping: StateMachineRecordedTransactionMappingStorage = MockStateMachineRecordedTransactionMappingStorage())
     : SingletonSerializeAsToken(), TxWritableStorageService

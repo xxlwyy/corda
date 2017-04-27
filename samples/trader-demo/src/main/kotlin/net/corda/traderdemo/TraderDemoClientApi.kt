@@ -1,7 +1,6 @@
 package net.corda.traderdemo
 
 import com.google.common.util.concurrent.Futures
-import net.corda.client.rpc.notUsed
 import net.corda.contracts.CommercialPaper
 import net.corda.contracts.asset.Cash
 import net.corda.contracts.testing.calculateRandomlySizedAmounts
@@ -29,17 +28,17 @@ class TraderDemoClientApi(val rpc: CordaRPCOps) {
     }
 
     val cashCount: Int get() {
-        val (vault, vaultUpdates) = rpc.vaultAndUpdates()
-        vaultUpdates.notUsed()
-        return vault.filterStatesOfType<Cash.State>().size
+        return rpc.vaultAndUpdates().use {
+            it.snapshot.filterStatesOfType<Cash.State>().size
+        }
     }
 
     val dollarCashBalance: Amount<Currency> get() = rpc.getCashBalances()[USD]!!
 
     val commercialPaperCount: Int get() {
-        val (vault, vaultUpdates) = rpc.vaultAndUpdates()
-        vaultUpdates.notUsed()
-        return vault.filterStatesOfType<CommercialPaper.State>().size
+        return rpc.vaultAndUpdates().use {
+            it.snapshot.filterStatesOfType<CommercialPaper.State>().size
+        }
     }
 
     fun runBuyer(amount: Amount<Currency> = 30000.DOLLARS) {

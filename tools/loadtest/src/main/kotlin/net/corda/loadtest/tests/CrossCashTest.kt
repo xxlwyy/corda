@@ -2,7 +2,6 @@ package net.corda.loadtest.tests
 
 import net.corda.client.mock.Generator
 import net.corda.client.mock.pickN
-import net.corda.client.rpc.notUsed
 import net.corda.contracts.asset.Cash
 import net.corda.core.contracts.Issued
 import net.corda.core.contracts.PartyAndReference
@@ -115,18 +114,18 @@ data class CrossCashState(
 val crossCashTest = LoadTest<CrossCashCommand, CrossCashState>(
         "Creating Cash transactions randomly",
 
-        generate = { state, parallelism ->
+        generate = { (nodeVaults), parallelism ->
             val nodeMap = simpleNodes.associateBy { it.info.legalIdentity }
             Generator.pickN(parallelism, simpleNodes).bind { nodes ->
                 Generator.sequence(
-                        nodes.map { node ->
-                            val quantities = state.nodeVaults[node.info.legalIdentity] ?: mapOf()
+                        nodes.map { (_, _, info) ->
+                            val quantities = nodeVaults[info.legalIdentity] ?: mapOf()
                             val possibleRecipients = nodeMap.keys.toList()
                             val moves = quantities.map {
-                                it.value.toDouble() / 1000 to generateMove(it.value, USD, node.info.legalIdentity, possibleRecipients)
+                                it.value.toDouble() / 1000 to generateMove(it.value, USD, info.legalIdentity, possibleRecipients)
                             }
                             val exits = quantities.mapNotNull {
-                                if (it.key == node.info.legalIdentity) {
+                                if (it.key == info.legalIdentity) {
                                     it.value.toDouble() / 3000 to generateExit(it.value, USD)
                                 } else {
                                     null
@@ -135,7 +134,7 @@ val crossCashTest = LoadTest<CrossCashCommand, CrossCashState>(
                             val command = Generator.frequency(
                                     listOf(1.0 to generateIssue(10000, USD, notary.info.notaryIdentity, possibleRecipients)) + moves + exits
                             )
-                            command.map { CrossCashCommand(it, nodeMap[node.info.legalIdentity]!!) }
+                            command.map { CrossCashCommand(it, nodeMap[info.legalIdentity]!!) }
                         }
                 )
             }
@@ -217,18 +216,18 @@ val crossCashTest = LoadTest<CrossCashCommand, CrossCashState>(
         gatherRemoteState = { previousState ->
             log.info("Reifying state...")
             val currentNodeVaults = HashMap<AbstractParty, HashMap<AbstractParty, Long>>()
-            simpleNodes.forEach {
+            simpleNodes.forEach { (_, connection, info) ->
                 val quantities = HashMap<AbstractParty, Long>()
-                val (vault, vaultUpdates) = it.connection.proxy.vaultAndUpdates()
-                vaultUpdates.notUsed()
-                vault.forEach {
-                    val state = it.state.data
-                    if (state is Cash.State) {
-                        val issuer = state.amount.token.issuer.party
-                        quantities.put(issuer, (quantities[issuer] ?: 0L) + state.amount.quantity)
+                connection.proxy.vaultAndUpdates().use {
+                    it.snapshot.forEach { stateAndRef ->
+                        val state = stateAndRef.state.data
+                        if (state is Cash.State) {
+                            val issuer = state.amount.token.issuer.party
+                            quantities[issuer] = (quantities[issuer] ?: 0L) + state.amount.quantity
+                        }
                     }
                 }
-                currentNodeVaults.put(it.info.legalIdentity, quantities)
+                currentNodeVaults[info.legalIdentity] = quantities
             }
             val (consistentVaults, diffQueues) = if (previousState == null) {
                 Pair(currentNodeVaults, mapOf<AbstractParty, Map<AbstractParty, List<Pair<AbstractParty, Long>>>>())
@@ -285,8 +284,8 @@ val crossCashTest = LoadTest<CrossCashCommand, CrossCashState>(
             CrossCashState(consistentVaults, diffQueues)
         },
 
-        isConsistent = { state ->
-            state.diffQueues.all { it.value.all { it.value.isEmpty() } }
+        isConsistent = { (_, diffQueues) ->
+            diffQueues.all { it.value.all { it.value.isEmpty() } }
         }
 )
 

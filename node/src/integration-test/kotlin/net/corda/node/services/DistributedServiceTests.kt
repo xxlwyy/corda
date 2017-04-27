@@ -66,7 +66,7 @@ class DistributedServiceTests : DriverBasedTest() {
         aliceProxy = connectRpc(alice)
         val rpcClientsToNotaries = notaries.map(::connectRpc)
         notaryStateMachines = Observable.from(rpcClientsToNotaries.map { proxy ->
-            proxy.stateMachinesAndUpdates().second.map { Pair(proxy.nodeIdentity(), it) }
+            proxy.flowStateMachines().updates.map { Pair(proxy.nodeIdentity(), it) }
         }).flatMap { it.onErrorResumeNext(Observable.empty()) }.bufferUntilSubscribed()
 
         runTest()

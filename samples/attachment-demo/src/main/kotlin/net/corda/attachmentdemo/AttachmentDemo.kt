@@ -96,7 +96,7 @@ fun sender(rpc: CordaRPCOps, inputStream: InputStream, hash: SecureHash.SHA256) 
 
 fun recipient(rpc: CordaRPCOps) {
     println("Waiting to receive transaction ...")
-    val stx = rpc.verifiedTransactions().second.toBlocking().first()
+    val stx = rpc.verifiedTransactions().updates.toBlocking().first()
     val wtx = stx.tx
     if (wtx.attachments.isNotEmpty()) {
         if (wtx.outputs.isNotEmpty()) {

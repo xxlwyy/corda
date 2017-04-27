@@ -7,7 +7,6 @@ import net.corda.core.contracts.UpgradedContract
 import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.FlowInitiator
 import net.corda.core.flows.FlowLogic
-import net.corda.core.flows.StateMachineRunId
 import net.corda.core.messaging.*
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.services.NetworkMapCache
@@ -19,10 +18,9 @@ import net.corda.node.services.messaging.requirePermission
 import net.corda.node.services.startFlowPermission
 import net.corda.node.services.statemachine.StateMachineManager
 import net.corda.node.utilities.transaction
-import org.bouncycastle.asn1.x500.X500Name
 import net.corda.nodeapi.CURRENT_RPC_USER
+import org.bouncycastle.asn1.x500.X500Name
 import org.jetbrains.exposed.sql.Database
-import rx.Observable
 import java.io.InputStream
 import java.security.PublicKey
 import java.time.Instant
@@ -37,46 +35,42 @@ class CordaRPCOpsImpl(
         private val smm: StateMachineManager,
         private val database: Database
 ) : CordaRPCOps {
-    override val protocolVersion: Int = 0
-
-    override fun networkMapUpdates(): Pair<List<NodeInfo>, Observable<NetworkMapCache.MapChange>> {
+    override fun networkMap(): SnapshotWithUpdates<NodeInfo, NetworkMapCache.MapChange> {
         return database.transaction {
             services.networkMapCache.track()
         }
     }
 
-    override fun vaultAndUpdates(): Pair<List<StateAndRef<ContractState>>, Observable<Vault.Update>> {
+    override fun vaultAndUpdates(): SnapshotWithUpdates<StateAndRef<ContractState>, Vault.Update> {
         return database.transaction {
             val (vault, updates) = services.vaultService.track()
-            Pair(vault.states.toList(), updates)
+            SnapshotWithUpdates(vault.states.toList(), updates)
         }
     }
 
-    override fun verifiedTransactions(): Pair<List<SignedTransaction>, Observable<SignedTransaction>> {
+    override fun verifiedTransactions(): SameType<SignedTransaction> {
         return database.transaction {
             services.storageService.validatedTransactions.track()
         }
     }
 
-    override fun stateMachinesAndUpdates(): Pair<List<StateMachineInfo>, Observable<StateMachineUpdate>> {
+    override fun flowStateMachines(): SnapshotWithUpdates<StateMachineInfo, StateMachineUpdate> {
         return database.transaction {
             val (allStateMachines, changes) = smm.track()
-            Pair(
+            SnapshotWithUpdates(
                     allStateMachines.map { stateMachineInfoFromFlowLogic(it.logic) },
                     changes.map { stateMachineUpdateFromStateMachineChange(it) }
             )
         }
     }
 
-    override fun stateMachineRecordedTransactionMapping(): Pair<List<StateMachineTransactionMapping>, Observable<StateMachineTransactionMapping>> {
+    override fun stateMachineRecordedTransactionMapping(): SameType<StateMachineTransactionMapping> {
         return database.transaction {
             services.storageService.stateMachineRecordedTransactionMapping.track()
         }
     }
 
-    override fun nodeIdentity(): NodeInfo {
-        return services.myInfo
-    }
+    override fun nodeIdentity(): NodeInfo = services.myInfo
 
     override fun addVaultTransactionNote(txnId: SecureHash, txnNote: String) {
         return database.transaction {
@@ -117,7 +111,7 @@ class CordaRPCOpsImpl(
         }
     }
 
-    override fun openAttachment(id: SecureHash): InputStream {
+    override fun downloadAttachment(id: SecureHash): InputStream {
         // TODO: this operation should not require an explicit transaction
         return database.transaction {
             services.storageService.attachments.openAttachment(id)!!.open()

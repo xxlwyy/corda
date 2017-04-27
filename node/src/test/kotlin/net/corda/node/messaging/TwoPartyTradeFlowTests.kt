@@ -4,23 +4,22 @@ import net.corda.contracts.CommercialPaper
 import net.corda.contracts.asset.*
 import net.corda.contracts.testing.fillWithSomeTestCash
 import net.corda.core.contracts.*
-import net.corda.core.crypto.*
+import net.corda.core.crypto.AnonymousParty
+import net.corda.core.crypto.Party
+import net.corda.core.crypto.SecureHash
 import net.corda.core.days
 import net.corda.core.flows.FlowStateMachine
 import net.corda.core.flows.StateMachineRunId
 import net.corda.core.getOrThrow
 import net.corda.core.map
+import net.corda.core.messaging.SameType
 import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.services.*
 import net.corda.core.rootCause
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.transactions.WireTransaction
-import net.corda.core.utilities.ALICE
-import net.corda.core.utilities.BOB
-import net.corda.core.utilities.DUMMY_NOTARY
-import net.corda.core.utilities.LogHelper
-import net.corda.core.utilities.TEST_TX_TIME
+import net.corda.core.utilities.*
 import net.corda.flows.TwoPartyTradeFlow.Buyer
 import net.corda.flows.TwoPartyTradeFlow.Seller
 import net.corda.node.internal.AbstractNode
@@ -375,7 +374,7 @@ class TwoPartyTradeFlowTests {
             net.runNetwork() // Clear network map registration messages
 
             val aliceTxStream = aliceNode.storage.validatedTransactions.track().second
-            val aliceTxMappings = with(aliceNode) { database.transaction { storage.stateMachineRecordedTransactionMapping.track().second } }
+            val aliceTxMappings = with(aliceNode) { database.transaction { storage.stateMachineRecordedTransactionMapping.track().updates } }
             val aliceSmId = runBuyerAndSeller(notaryNode, aliceNode, bobNode,
                     "alice's paper".outputStateAndRef()).sellerId
 
@@ -576,7 +575,7 @@ class TwoPartyTradeFlowTests {
 
 
     class RecordingTransactionStorage(val database: Database, val delegate: TransactionStorage) : TransactionStorage {
-        override fun track(): Pair<List<SignedTransaction>, Observable<SignedTransaction>> {
+        override fun track(): SameType<SignedTransaction> {
             return database.transaction {
                 delegate.track()
             }

@@ -1,6 +1,5 @@
 package net.corda.docs
 
-import net.corda.client.rpc.notUsed
 import net.corda.contracts.asset.Cash
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.USD
@@ -106,15 +105,15 @@ fun main(args: Array<String>) {
 
 // START 6
 fun generateTransactions(proxy: CordaRPCOps) {
-    val (vault, vaultUpdates) = proxy.vaultAndUpdates()
-    vaultUpdates.notUsed()
-    var ownedQuantity = vault.fold(0L) { sum, state ->
-        sum + (state.state.data as Cash.State).amount.quantity
+    var ownedQuantity = proxy.vaultAndUpdates().use {
+        it.snapshot.fold(0L) { sum, state ->
+            sum + (state.state.data as Cash.State).amount.quantity
+        }
+    }
+    val notary = proxy.networkMap().use {
+        it.snapshot.first { it.advertisedServices.any { it.info.type.isNotary() } }.notaryIdentity
     }
     val issueRef = OpaqueBytes.of(0)
-    val (parties, partyUpdates) = proxy.networkMapUpdates()
-    partyUpdates.notUsed()
-    val notary = parties.first { it.advertisedServices.any { it.info.type.isNotary() } }.notaryIdentity
     val me = proxy.nodeIdentity().legalIdentity
     while (true) {
         Thread.sleep(1000)

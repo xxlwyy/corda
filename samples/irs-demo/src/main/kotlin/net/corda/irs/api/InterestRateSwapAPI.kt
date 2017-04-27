@@ -1,6 +1,5 @@
 package net.corda.irs.api
 
-import net.corda.client.rpc.notUsed
 import net.corda.core.contracts.filterStatesOfType
 import net.corda.core.crypto.Party
 import net.corda.core.getOrThrow
@@ -43,21 +42,20 @@ class InterestRateSwapAPI(val rpc: CordaRPCOps) {
     private fun generateDealLink(deal: InterestRateSwap.State<*>) = "/api/irs/deals/" + deal.common.tradeID
 
     private fun getDealByRef(ref: String): InterestRateSwap.State<*>? {
-        val (vault, vaultUpdates) = rpc.vaultAndUpdates()
-        vaultUpdates.notUsed()
-        val states = vault.filterStatesOfType<InterestRateSwap.State<*>>().filter { it.state.data.ref == ref }
-        return if (states.isEmpty()) null else {
-            val deals = states.map { it.state.data }
-            return if (deals.isEmpty()) null else deals[0]
+        return rpc.vaultAndUpdates().use {
+            val states = it.snapshot.filterStatesOfType<InterestRateSwap.State<*>>().filter { it.state.data.ref == ref }
+            if (states.isEmpty()) null else {
+                val deals = states.map { it.state.data }
+                if (deals.isEmpty()) null else deals[0]
+            }
         }
     }
 
     private fun getAllDeals(): Array<InterestRateSwap.State<*>> {
-        val (vault, vaultUpdates) = rpc.vaultAndUpdates()
-        vaultUpdates.notUsed()
-        val states = vault.filterStatesOfType<InterestRateSwap.State<*>>()
-        val swaps = states.map { it.state.data }.toTypedArray()
-        return swaps
+        return rpc.vaultAndUpdates().use {
+            val states = it.snapshot.filterStatesOfType<InterestRateSwap.State<*>>()
+            states.map { it.state.data }.toTypedArray()
+        }
     }
 
     @GET

@@ -6,6 +6,7 @@ import net.corda.core.contracts.Contract
 import net.corda.core.crypto.Party
 import net.corda.core.messaging.MessagingService
 import net.corda.core.messaging.SingleMessageRecipient
+import net.corda.core.messaging.SnapshotWithUpdates
 import net.corda.core.node.NodeInfo
 import net.corda.core.randomOrNull
 import net.corda.core.serialization.CordaSerializable
@@ -50,7 +51,7 @@ interface NetworkMapCache {
      * Atomically get the current party nodes and a stream of updates. Note that the Observable buffers updates until the
      * first subscriber is registered so as to avoid racing with early updates.
      */
-    fun track(): Pair<List<NodeInfo>, Observable<MapChange>>
+    fun track(): SnapshotWithUpdates<NodeInfo, MapChange>
 
     /** Get the collection of nodes which advertise a specific service. */
     fun getNodesWithService(serviceType: ServiceType): List<NodeInfo> {

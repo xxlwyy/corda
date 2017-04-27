@@ -2,8 +2,8 @@ package net.corda.core.node.services
 
 import net.corda.core.crypto.SecureHash
 import net.corda.core.flows.StateMachineRunId
+import net.corda.core.messaging.SameType
 import net.corda.core.serialization.CordaSerializable
-import rx.Observable
 
 @CordaSerializable
 data class StateMachineTransactionMapping(val stateMachineRunId: StateMachineRunId, val transactionId: SecureHash)
@@ -14,5 +14,5 @@ data class StateMachineTransactionMapping(val stateMachineRunId: StateMachineRun
  */
 interface StateMachineRecordedTransactionMappingStorage {
     fun addMapping(stateMachineRunId: StateMachineRunId, transactionId: SecureHash)
-    fun track(): Pair<List<StateMachineTransactionMapping>, Observable<StateMachineTransactionMapping>>
+    fun track(): SameType<StateMachineTransactionMapping>
 }

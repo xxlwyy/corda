@@ -8,6 +8,7 @@ import net.corda.core.crypto.Party
 import net.corda.core.map
 import net.corda.core.messaging.MessagingService
 import net.corda.core.messaging.SingleMessageRecipient
+import net.corda.core.messaging.SnapshotWithUpdates
 import net.corda.core.messaging.createMessage
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.services.DEFAULT_SESSION_ID
@@ -71,9 +72,9 @@ open class InMemoryNetworkMapCache : SingletonSerializeAsToken(), NetworkMapCach
 
     override fun getNodeByLegalIdentityKey(identityKey: PublicKey): NodeInfo? = registeredNodes[identityKey]
 
-    override fun track(): Pair<List<NodeInfo>, Observable<MapChange>> {
-        synchronized(_changed) {
-            return Pair(partyNodes, _changed.bufferUntilSubscribed().wrapWithDatabaseTransaction())
+    override fun track(): SnapshotWithUpdates<NodeInfo, MapChange> {
+        return synchronized(_changed) {
+            SnapshotWithUpdates(partyNodes, _changed.bufferUntilSubscribed().wrapWithDatabaseTransaction())
         }
     }
 

@@ -1,7 +1,6 @@
 package net.corda.loadtest
 
 import net.corda.client.mock.Generator
-import net.corda.client.rpc.notUsed
 import net.corda.core.crypto.toBase58String
 import net.corda.node.driver.PortAllocation
 import net.corda.node.services.network.NetworkMapService
@@ -171,11 +170,11 @@ fun runLoadTests(configuration: LoadTestConfiguration, tests: List<Pair<LoadTest
             log.info("Getting node info of ${connection.hostName}")
             val nodeInfo = connection.proxy.nodeIdentity()
             log.info("Got node info of ${connection.hostName}: $nodeInfo!")
-            val (otherNodeInfos, nodeInfoUpdates) = connection.proxy.networkMapUpdates()
-            nodeInfoUpdates.notUsed()
-            val pubkeysString = otherNodeInfos.map {
-                "    ${it.legalIdentity.name}: ${it.legalIdentity.owningKey.toBase58String()}"
-            }.joinToString("\n")
+            val pubkeysString = connection.proxy.networkMap().use {
+                it.snapshot.map {
+                    "    ${it.legalIdentity.name}: ${it.legalIdentity.owningKey.toBase58String()}"
+                }.joinToString("\n")
+            }
             log.info("${connection.hostName} waiting for network map")
             connection.proxy.waitUntilRegisteredWithNetworkMap().get()
             log.info("${connection.hostName} sees\n$pubkeysString")

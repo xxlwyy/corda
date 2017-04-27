@@ -1,15 +1,11 @@
 package net.corda.client.rpc
 
 import net.corda.core.contracts.DOLLARS
-import net.corda.core.flows.FlowInitiator
+import net.corda.core.contracts.USD
 import net.corda.core.flows.FlowException
+import net.corda.core.flows.FlowInitiator
 import net.corda.core.getOrThrow
-import net.corda.core.messaging.FlowHandle
-import net.corda.core.messaging.FlowProgressHandle
-import net.corda.core.messaging.CordaRPCOps
-import net.corda.core.messaging.StateMachineUpdate
-import net.corda.core.messaging.startFlow
-import net.corda.core.messaging.startTrackedFlow
+import net.corda.core.messaging.*
 import net.corda.core.node.services.ServiceInfo
 import net.corda.core.random63BitValue
 import net.corda.core.serialization.OpaqueBytes
@@ -26,8 +22,9 @@ import org.assertj.core.api.Assertions.assertThatExceptionOfType
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import java.util.*
-import kotlin.test.*
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class CordaRPCClientTest : NodeBasedTest() {
     private val rpcUser = User("user1", "test", permissions = setOf(
@@ -118,16 +115,15 @@ class CordaRPCClientTest : NodeBasedTest() {
         val finishCash = proxy.getCashBalances()
         println("Cash Balances: $finishCash")
         assertEquals(1, finishCash.size)
-        assertEquals(123.DOLLARS, finishCash.get(Currency.getInstance("USD")))
+        assertEquals(123.DOLLARS, finishCash[USD])
     }
 
     @Test
     fun `flow initiator via RPC`() {
         val proxy = createRpcProxy(rpcUser.username, rpcUser.password)
-        val smUpdates = proxy.stateMachinesAndUpdates()
         var countRpcFlows = 0
         var countShellFlows = 0
-        smUpdates.second.subscribe {
+        proxy.flowStateMachines().updates.subscribe {
             if (it is StateMachineUpdate.Added) {
                 val initiator = it.stateMachineInfo.initiator
                 if (initiator is FlowInitiator.RPC)

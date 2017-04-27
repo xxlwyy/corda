@@ -58,7 +58,7 @@ class NodeMonitorModel {
         client.start(username, password)
         val proxy = client.proxy()
 
-        val (stateMachines, stateMachineUpdates) = proxy.stateMachinesAndUpdates()
+        val (stateMachines, stateMachineUpdates) = proxy.flowStateMachines()
         // Extract the flow tracking stream
         // TODO is there a nicer way of doing this? Stream of streams in general results in code like this...
         val currentProgressTrackerUpdates = stateMachines.mapNotNull { stateMachine ->
@@ -83,15 +83,13 @@ class NodeMonitorModel {
         vaultUpdates.startWith(initialVaultUpdate).subscribe(vaultUpdatesSubject)
 
         // Transactions
-        val (transactions, newTransactions) = proxy.verifiedTransactions()
-        newTransactions.startWith(transactions).subscribe(transactionsSubject)
+        proxy.verifiedTransactions().everything().subscribe(transactionsSubject)
 
         // SM -> TX mapping
-        val (smTxMappings, futureSmTxMappings) = proxy.stateMachineRecordedTransactionMapping()
-        futureSmTxMappings.startWith(smTxMappings).subscribe(stateMachineTransactionMappingSubject)
+        proxy.stateMachineRecordedTransactionMapping().everything().subscribe(stateMachineTransactionMappingSubject)
 
         // Parties on network
-        val (parties, futurePartyUpdate) = proxy.networkMapUpdates()
+        val (parties, futurePartyUpdate) = proxy.networkMap()
         futurePartyUpdate.startWith(parties.map { MapChange.Added(it) }).subscribe(networkMapSubject)
 
         proxyObservable.set(proxy)

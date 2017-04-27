@@ -1,11 +1,13 @@
 package net.corda.vega.api
 
 import com.opengamma.strata.basics.currency.MultiCurrencyAmount
-import net.corda.client.rpc.notUsed
 import net.corda.core.contracts.DealState
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.filterStatesOfType
-import net.corda.core.crypto.*
+import net.corda.core.crypto.AbstractParty
+import net.corda.core.crypto.Party
+import net.corda.core.crypto.parsePublicKeyBase58
+import net.corda.core.crypto.toBase58String
 import net.corda.core.getOrThrow
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.startFlow
@@ -36,9 +38,9 @@ class PortfolioApi(val rpc: CordaRPCOps) {
     private val portfolioUtils = PortfolioApiUtils(ownParty)
 
     private inline fun <reified T : DealState> dealsWith(party: AbstractParty): List<StateAndRef<T>> {
-        val (vault, vaultUpdates) = rpc.vaultAndUpdates()
-        vaultUpdates.notUsed()
-        return vault.filterStatesOfType<T>().filter { it.state.data.parties.any { it == party } }
+        return rpc.vaultAndUpdates().use {
+            it.snapshot.filterStatesOfType<T>().filter { it.state.data.parties.any { it == party } }
+        }
     }
 
     /**
@@ -250,17 +252,17 @@ class PortfolioApi(val rpc: CordaRPCOps) {
     @Path("whoami")
     @Produces(MediaType.APPLICATION_JSON)
     fun getWhoAmI(): AvailableParties {
-        val (parties, partyUpdates) = rpc.networkMapUpdates()
-        partyUpdates.notUsed()
-        val counterParties = parties.filter {
-            it.legalIdentity.name != DUMMY_MAP.name
-                    && it.legalIdentity.name != DUMMY_NOTARY.name
-                    && it.legalIdentity.name != ownParty.name
-        }
+        return rpc.networkMap().use {
+            val counterParties = it.snapshot.filter { node ->
+                node.legalIdentity.name != DUMMY_MAP.name
+                        && node.legalIdentity.name != DUMMY_NOTARY.name
+                        && node.legalIdentity.name != ownParty.name
+            }
 
-        return AvailableParties(
-                self = ApiParty(ownParty.owningKey.toBase58String(), ownParty.name),
-                counterparties = counterParties.map { ApiParty(it.legalIdentity.owningKey.toBase58String(), it.legalIdentity.name) })
+            AvailableParties(
+                    self = ApiParty(ownParty.owningKey.toBase58String(), ownParty.name),
+                    counterparties = counterParties.map { ApiParty(it.legalIdentity.owningKey.toBase58String(), it.legalIdentity.name) })
+        }
     }
 
     data class ValuationCreationParams(val valuationDate: LocalDate)

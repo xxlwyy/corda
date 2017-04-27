@@ -34,7 +34,9 @@ import org.junit.Before
 import org.junit.Test
 import rx.Observable
 import java.io.ByteArrayOutputStream
-import kotlin.test.*
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class CordaRPCOpsImplTest {
 
@@ -63,9 +65,9 @@ class CordaRPCOpsImplTest {
         )))
 
         aliceNode.database.transaction {
-            stateMachineUpdates = rpc.stateMachinesAndUpdates().second
-            transactions = rpc.verifiedTransactions().second
-            vaultUpdates = rpc.vaultAndUpdates().second
+            stateMachineUpdates = rpc.flowStateMachines().updates
+            transactions = rpc.verifiedTransactions().updates
+            vaultUpdates = rpc.vaultAndUpdates().updates
         }
     }
 
@@ -220,7 +222,7 @@ class CordaRPCOpsImplTest {
         val bufferRpc = ByteArrayOutputStream()
 
         IOUtils.copy(Thread.currentThread().contextClassLoader.getResourceAsStream(testJar), bufferFile)
-        IOUtils.copy(rpc.openAttachment(secureHash), bufferRpc)
+        IOUtils.copy(rpc.downloadAttachment(secureHash), bufferRpc)
 
         assertArrayEquals(bufferFile.toByteArray(), bufferRpc.toByteArray())
     }

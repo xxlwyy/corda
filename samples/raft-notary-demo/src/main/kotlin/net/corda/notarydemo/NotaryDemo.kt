@@ -4,7 +4,6 @@ import com.google.common.net.HostAndPort
 import com.google.common.util.concurrent.Futures
 import joptsimple.OptionParser
 import net.corda.client.rpc.CordaRPCClient
-import net.corda.client.rpc.notUsed
 import net.corda.core.crypto.toStringShort
 import net.corda.core.div
 import net.corda.core.getOrThrow
@@ -30,15 +29,15 @@ fun main(args: Array<String>) {
 /** Interface for using the notary demo API from a client. */
 private class NotaryDemoClientApi(val rpc: CordaRPCOps) {
     private val notary by lazy {
-        val (parties, partyUpdates) = rpc.networkMapUpdates()
-        partyUpdates.notUsed()
-        parties.first { it.advertisedServices.any { it.info.type.isNotary() } }.notaryIdentity
+        rpc.networkMap().use {
+            it.snapshot.first { it.advertisedServices.any { it.info.type.isNotary() } }.notaryIdentity
+        }
     }
 
     private val counterpartyNode by lazy {
-        val (parties, partyUpdates) = rpc.networkMapUpdates()
-        partyUpdates.notUsed()
-        parties.first { it.legalIdentity.name == "CN=Counterparty,O=R3,OU=corda,L=London,C=UK" }
+        rpc.networkMap().use {
+            it.snapshot.first { it.legalIdentity.name == "CN=Counterparty,O=R3,OU=corda,L=London,C=UK" }
+        }
     }
 
     private companion object {
