@@ -6,14 +6,13 @@ import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.FlowHandle
 import net.corda.core.messaging.startFlow
 import net.corda.core.serialization.OpaqueBytes
-import net.corda.core.transactions.SignedTransaction
 import java.util.*
 
 /**
  * A command to initiate the cash flow with.
  */
 sealed class CashFlowCommand {
-    abstract fun startFlow(proxy: CordaRPCOps): FlowHandle<SignedTransaction>
+    abstract fun startFlow(proxy: CordaRPCOps): FlowHandle<AbstractCashFlow.Result>
 
     /**
      * A command to initiate the Cash flow with.

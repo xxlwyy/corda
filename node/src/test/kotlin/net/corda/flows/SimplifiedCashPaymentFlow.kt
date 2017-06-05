@@ -6,6 +6,7 @@ import net.corda.core.contracts.InsufficientBalanceException
 import net.corda.core.contracts.TransactionType
 import net.corda.core.flows.StartableByRPC
 import net.corda.core.identity.Party
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import java.util.*
@@ -18,19 +19,16 @@ import java.util.*
  * @param issuerConstraint if specified, the payment will be made using only cash issued by the given parties.
  */
 @StartableByRPC
-open class CashPaymentFlow(
+open class SimplifiedCashPaymentFlow(
         val amount: Amount<Currency>,
         val recipient: Party,
         progressTracker: ProgressTracker,
-        val issuerConstraint: Set<Party>? = null) : AbstractCashFlow<AbstractCashFlow.Result>(progressTracker) {
+        val issuerConstraint: Set<Party>? = null) : AbstractCashFlow<SignedTransaction>(progressTracker) {
     /** A straightforward constructor that constructs spends using cash states of any issuer. */
     constructor(amount: Amount<Currency>, recipient: Party) : this(amount, recipient, tracker())
 
     @Suspendable
-    override fun call(): AbstractCashFlow.Result {
-        progressTracker.currentStep = GENERATING_ID
-        val txIdentities = subFlow(TxKeyFlow.Requester(recipient))
-        val anonymousRecipient = txIdentities[recipient]!!.identity
+    override fun call(): SignedTransaction {
         progressTracker.currentStep = GENERATING_TX
         val builder: TransactionBuilder = TransactionType.General.Builder(null as Party?)
         // TODO: Have some way of restricting this to states the caller controls
@@ -38,7 +36,7 @@ open class CashPaymentFlow(
             serviceHub.vaultService.generateSpend(
                     builder,
                     amount,
-                    anonymousRecipient,
+                    recipient,
                     issuerConstraint)
         } catch (e: InsufficientBalanceException) {
             throw CashException("Insufficient cash for spend: ${e.message}", e)
@@ -49,6 +47,6 @@ open class CashPaymentFlow(
 
         progressTracker.currentStep = FINALISING_TX
         finaliseTx(setOf(recipient), tx, "Unable to notarise spend")
-        return Result(tx, txIdentities)
+        return tx
     }
 }

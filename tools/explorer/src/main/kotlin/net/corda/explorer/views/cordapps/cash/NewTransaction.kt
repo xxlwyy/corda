@@ -20,15 +20,16 @@ import net.corda.client.jfx.utils.unique
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.sumOrNull
 import net.corda.core.contracts.withoutIssuer
-import net.corda.core.identity.AbstractParty
-import net.corda.core.identity.Party
-import net.corda.core.crypto.commonName
 import net.corda.core.flows.FlowException
 import net.corda.core.getOrThrow
+import net.corda.core.identity.AbstractParty
+import net.corda.core.identity.Party
+import net.corda.core.messaging.FlowHandle
 import net.corda.core.messaging.startFlow
 import net.corda.core.node.NodeInfo
 import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.then
+import net.corda.core.transactions.SignedTransaction
 import net.corda.explorer.formatters.PartyNameFormatter
 import net.corda.explorer.model.CashTransaction
 import net.corda.explorer.model.IssuerModel
@@ -36,6 +37,7 @@ import net.corda.explorer.model.ReportingCurrencyModel
 import net.corda.explorer.views.bigDecimalFormatter
 import net.corda.explorer.views.byteFormatter
 import net.corda.explorer.views.stringConverter
+import net.corda.flows.AbstractCashFlow
 import net.corda.flows.CashFlowCommand
 import net.corda.flows.IssuerFlow.IssuanceRequester
 import org.controlsfx.dialog.ExceptionDialog
@@ -93,7 +95,7 @@ class NewTransaction : Fragment() {
                 initOwner(window)
                 show()
             }
-            val handle = if (command is CashFlowCommand.IssueCash) {
+            val handle: FlowHandle<AbstractCashFlow.Result> = if (command is CashFlowCommand.IssueCash) {
                 rpcProxy.value!!.startFlow(::IssuanceRequester,
                         command.amount,
                         command.recipient,
@@ -104,7 +106,8 @@ class NewTransaction : Fragment() {
             }
             runAsync {
                 handle.returnValue.then { dialog.dialogPane.isDisable = false }.getOrThrow()
-            }.ui {
+            }.ui { it ->
+                val stx: SignedTransaction = it.stx
                 val type = when (command) {
                     is CashFlowCommand.IssueCash -> "Cash Issued"
                     is CashFlowCommand.ExitCash -> "Cash Exited"
@@ -118,7 +121,7 @@ class NewTransaction : Fragment() {
                     row { label(type) { font = Font.font(font.family, FontWeight.EXTRA_BOLD, font.size + 2) } }
                     row {
                         label("Transaction ID :") { GridPane.setValignment(this, VPos.TOP) }
-                        label { text = Splitter.fixedLength(16).split("${it.id}").joinToString("\n") }
+                        label { text = Splitter.fixedLength(16).split("${stx.id}").joinToString("\n") }
                     }
                 }
                 dialog.dialogPane.scene.window.sizeToScene()

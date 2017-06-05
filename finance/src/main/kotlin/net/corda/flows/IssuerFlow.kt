@@ -3,6 +3,7 @@ package net.corda.flows
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.*
 import net.corda.core.flows.*
+import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.serialization.CordaSerializable
 import net.corda.core.serialization.OpaqueBytes
@@ -29,12 +30,15 @@ object IssuerFlow {
     @InitiatingFlow
     @StartableByRPC
     class IssuanceRequester(val amount: Amount<Currency>, val issueToParty: Party, val issueToPartyRef: OpaqueBytes,
-                            val issuerBankParty: Party) : FlowLogic<SignedTransaction>() {
+                            val issuerBankParty: Party) : FlowLogic<AbstractCashFlow.Result>() {
         @Suspendable
         @Throws(CashException::class)
-        override fun call(): SignedTransaction {
+        override fun call(): AbstractCashFlow.Result {
             val issueRequest = IssuanceRequestState(amount, issueToParty, issueToPartyRef)
-            return sendAndReceive<SignedTransaction>(issuerBankParty, issueRequest).unwrap { it }
+            val stxAndIdentity = sendAndReceive<Pair<SignedTransaction, AnonymisedIdentity>>(issuerBankParty, issueRequest).unwrap { it }
+            val (stx, identity) = stxAndIdentity
+            // TODO: Include anonymised identities
+            return AbstractCashFlow.Result(stx, mapOf(Pair(issueToParty, identity)))
         }
     }
 
@@ -68,14 +72,14 @@ object IssuerFlow {
             // TODO: parse request to determine Asset to issue
             val txn = issueCashTo(issueRequest.amount, issueRequest.issueToParty, issueRequest.issuerPartyRef)
             progressTracker.currentStep = SENDING_CONFIRM
-            send(otherParty, txn)
-            return txn
+            send(otherParty, Pair(txn.stx, txn.identities[issueRequest.issueToParty]))
+            return txn.stx
         }
 
         @Suspendable
         private fun issueCashTo(amount: Amount<Currency>,
-                                issueTo: Party,
-                                issuerPartyRef: OpaqueBytes): SignedTransaction {
+                                issueTo: AbstractParty,
+                                issuerPartyRef: OpaqueBytes): AbstractCashFlow.Result {
             // TODO: pass notary in as request parameter
             val notaryParty = serviceHub.networkMapCache.notaryNodes[0].notaryIdentity
             // invoke Cash subflow to issue Asset
@@ -89,7 +93,7 @@ object IssuerFlow {
                 return issueTx
             // now invoke Cash subflow to Move issued assetType to issue requester
             progressTracker.currentStep = TRANSFERRING
-            val moveCashFlow = CashPaymentFlow(amount, issueTo)
+            val moveCashFlow = CashPaymentFlow(amount, this.otherParty)
             val moveTx = subFlow(moveCashFlow)
             // NOTE: CashFlow PayCash calls FinalityFlow which performs a Broadcast (which stores a local copy of the txn to the ledger)
             return moveTx

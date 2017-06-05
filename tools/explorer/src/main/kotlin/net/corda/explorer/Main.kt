@@ -18,9 +18,7 @@ import net.corda.explorer.views.*
 import net.corda.explorer.views.cordapps.cash.CashViewer
 import org.apache.commons.lang.SystemUtils
 import org.controlsfx.dialog.ExceptionDialog
-import tornadofx.App
-import tornadofx.addStageIcon
-import tornadofx.find
+import tornadofx.*
 
 /**
  * Main class for Explorer, you will need Tornado FX to run the explorer.

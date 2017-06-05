@@ -8,6 +8,7 @@ import net.corda.core.contracts.issuedBy
 import net.corda.core.flows.StartableByRPC
 import net.corda.core.identity.Party
 import net.corda.core.serialization.OpaqueBytes
+import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.TransactionBuilder
 import net.corda.core.utilities.ProgressTracker
 import java.util.*
@@ -21,29 +22,26 @@ import java.util.*
  * @param notary the notary to set on the output states.
  */
 @StartableByRPC
-class CashIssueFlow(val amount: Amount<Currency>,
-                    val issueRef: OpaqueBytes,
-                    val recipient: Party,
-                    val notary: Party,
-                    progressTracker: ProgressTracker) : AbstractCashFlow<AbstractCashFlow.Result>(progressTracker) {
+class SimplifiedCashIssueFlow(val amount: Amount<Currency>,
+                              val issueRef: OpaqueBytes,
+                              val recipient: Party,
+                              val notary: Party,
+                              progressTracker: ProgressTracker) : AbstractCashFlow<SignedTransaction>(progressTracker) {
     constructor(amount: Amount<Currency>,
                 issueRef: OpaqueBytes,
                 recipient: Party,
                 notary: Party) : this(amount, issueRef, recipient, notary, tracker())
 
     @Suspendable
-    override fun call(): AbstractCashFlow.Result {
-        progressTracker.currentStep = GENERATING_ID
-        val txIdentities = subFlow(TxKeyFlow.Requester(recipient))
-        val anonymousRecipient = txIdentities[recipient]!!.identity
+    override fun call(): SignedTransaction {
         progressTracker.currentStep = GENERATING_TX
         val builder: TransactionBuilder = TransactionType.General.Builder(notary = notary)
         val issuer = serviceHub.myInfo.legalIdentity.ref(issueRef)
-        Cash().generateIssue(builder, amount.issuedBy(issuer), anonymousRecipient, notary)
+        Cash().generateIssue(builder, amount.issuedBy(issuer), recipient, notary)
         progressTracker.currentStep = SIGNING_TX
         val tx = serviceHub.signInitialTransaction(builder, issuer.party.owningKey)
         progressTracker.currentStep = FINALISING_TX
-        subFlow(FinalityFlow(tx))
-        return Result(tx, txIdentities)
+        finaliseTx(setOf(recipient), tx, "Unable to notarise issuance")
+        return tx
     }
 }

@@ -5,13 +5,9 @@ import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatedBy
 import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.StartableByRPC
-import net.corda.core.identity.AnonymousParty
 import net.corda.core.identity.Party
-import net.corda.core.serialization.CordaSerializable
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
-import org.bouncycastle.cert.X509CertificateHolder
-import java.security.cert.CertPath
 
 /**
  * Very basic flow which exchanges transaction key and certificate paths between two parties in a transaction.
@@ -75,15 +71,5 @@ object TxKeyFlow {
             return mapOf(Pair(otherSide, myIdentity),
                     Pair(serviceHub.myInfo.legalIdentity, theirIdentity))
         }
-    }
-
-    @CordaSerializable
-    data class AnonymousIdentity(
-            val certPath: CertPath,
-            val certificate: X509CertificateHolder,
-            val identity: AnonymousParty) {
-        constructor(myIdentity: Pair<X509CertificateHolder, CertPath>) : this(myIdentity.second,
-                myIdentity.first,
-                AnonymousParty(myIdentity.second.certificates.first().publicKey))
     }
 }

@@ -26,8 +26,8 @@ import net.corda.core.utilities.LogHelper
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.ProgressTracker.Change
 import net.corda.core.utilities.unwrap
-import net.corda.flows.CashIssueFlow
-import net.corda.flows.CashPaymentFlow
+import net.corda.flows.SimplifiedCashIssueFlow
+import net.corda.flows.SimplifiedCashPaymentFlow
 import net.corda.flows.FinalityFlow
 import net.corda.flows.NotaryFlow
 import net.corda.node.internal.InitiatedFlowFactory
@@ -324,14 +324,14 @@ class FlowFrameworkTests {
     @Test
     fun `different notaries are picked when addressing shared notary identity`() {
         assertEquals(notary1.info.notaryIdentity, notary2.info.notaryIdentity)
-        node1.services.startFlow(CashIssueFlow(
+        node1.services.startFlow(SimplifiedCashIssueFlow(
                 2000.DOLLARS,
                 OpaqueBytes.of(0x01),
                 node1.info.legalIdentity,
                 notary1.info.notaryIdentity))
         // We pay a couple of times, the notary picking should go round robin
         for (i in 1..3) {
-            node1.services.startFlow(CashPaymentFlow(500.DOLLARS, node2.info.legalIdentity))
+            node1.services.startFlow(SimplifiedCashPaymentFlow(500.DOLLARS, node2.info.legalIdentity))
             mockNet.runNetwork()
         }
         val endpoint = mockNet.messagingNetwork.endpoint(notary1.network.myAddress as InMemoryMessagingNetwork.PeerHandle)!!

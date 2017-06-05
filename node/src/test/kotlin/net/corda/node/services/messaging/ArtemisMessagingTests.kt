@@ -15,6 +15,7 @@ import net.corda.node.services.RPCUserServiceImpl
 import net.corda.node.services.api.MonitoringService
 import net.corda.node.services.config.NodeConfiguration
 import net.corda.node.services.config.configureWithDevSSLCertificate
+import net.corda.node.services.identity.InMemoryIdentityService
 import net.corda.node.services.network.InMemoryNetworkMapCache
 import net.corda.node.services.network.NetworkMapService
 import net.corda.node.services.transactions.PersistentUniquenessProvider
@@ -28,6 +29,7 @@ import net.corda.testing.freePort
 import net.corda.testing.node.makeTestDataSourceProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.bouncycastle.cert.X509CertificateHolder
 import org.jetbrains.exposed.sql.Database
 import org.junit.After
 import org.junit.Before
@@ -60,6 +62,7 @@ class ArtemisMessagingTests {
     var messagingClient: NodeMessagingClient? = null
     var messagingServer: ArtemisMessagingServer? = null
 
+    // TODO: We should have a dummy service hub rather than change behaviour in tests
     val networkMapCache = InMemoryNetworkMapCache(serviceHub = null)
 
     val rpcOps = object : RPCOps {

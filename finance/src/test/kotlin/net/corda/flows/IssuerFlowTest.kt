@@ -39,6 +39,12 @@ class IssuerFlowTest {
         notaryNode = mockNet.createNotaryNode(null, DUMMY_NOTARY.name)
         bankOfCordaNode = mockNet.createPartyNode(notaryNode.info.address, BOC.name)
         bankClientNode = mockNet.createPartyNode(notaryNode.info.address, MEGA_CORP.name)
+        val nodes = listOf(notaryNode, bankOfCordaNode, bankClientNode)
+
+        nodes.forEach { node ->
+            nodes.map { it.info.legalIdentityAndCert }.forEach(node.services.identityService::registerIdentity)
+            node.registerInitiatedFlow(TxKeyFlow.Provider::class.java)
+        }
     }
 
     @After
@@ -51,7 +57,7 @@ class IssuerFlowTest {
         // using default IssueTo Party Reference
         val (issuer, issuerResult) = runIssuerAndIssueRequester(bankOfCordaNode, bankClientNode, 1000000.DOLLARS,
                 bankClientNode.info.legalIdentity, OpaqueBytes.of(123))
-        assertEquals(issuerResult.get(), issuer.get().resultFuture.get())
+        assertEquals(issuerResult.get().stx, issuer.get().resultFuture.get())
 
         // try to issue an amount of a restricted currency
         assertFailsWith<FlowException> {
@@ -65,7 +71,7 @@ class IssuerFlowTest {
         // using default IssueTo Party Reference
         val (issuer, issuerResult) = runIssuerAndIssueRequester(bankOfCordaNode, bankOfCordaNode, 1000000.DOLLARS,
                 bankOfCordaNode.info.legalIdentity, OpaqueBytes.of(123))
-        assertEquals(issuerResult.get(), issuer.get().resultFuture.get())
+        assertEquals(issuerResult.get().stx, issuer.get().resultFuture.get())
     }
 
     @Test
@@ -78,7 +84,7 @@ class IssuerFlowTest {
                     bankClientNode.info.legalIdentity, OpaqueBytes.of(123))
         }
         handles.forEach {
-            require(it.issueRequestResult.get() is SignedTransaction)
+            require(it.issueRequestResult.get().stx is SignedTransaction)
         }
     }
 
@@ -99,6 +105,6 @@ class IssuerFlowTest {
 
     private data class RunResult(
             val issuer: ListenableFuture<FlowStateMachine<*>>,
-            val issueRequestResult: ListenableFuture<SignedTransaction>
+            val issueRequestResult: ListenableFuture<AbstractCashFlow.Result>
     )
 }
