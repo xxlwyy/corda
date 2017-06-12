@@ -123,7 +123,7 @@ class ClassCarpenter {
             // public class Name implements SimpleFieldAccess {
             val superName = schema.superclass?.name?.jvm ?: "java/lang/Object"
             val interfaces = arrayOf(SimpleFieldAccess::class.java.name.jvm) + schema.interfaces.map { it.name.jvm }
-            visit(52, ACC_PUBLIC + ACC_SUPER, jvmName, null, superName, interfaces)
+            visit(V1_8, ACC_PUBLIC + ACC_SUPER, jvmName, null, superName, interfaces)
             generateFields(schema)
             generateConstructor(jvmName, schema)
             generateGetters(jvmName, schema)
