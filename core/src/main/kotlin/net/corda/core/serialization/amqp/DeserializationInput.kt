@@ -22,6 +22,31 @@ class DeserializationInput(internal val serializerFactory: SerializerFactory = S
     @Throws(NotSerializableException::class)
     inline fun <reified T : Any> deserialize(bytes: SerializedBytes<T>): T = deserialize(bytes, T::class.java)
 
+
+    @Throws(NotSerializableException::class)
+    inline fun <reified T : Any> deserializeRtnEnvelope(bytes: SerializedBytes<T>): Pair<T, Envelope> =
+            deserializeRtnEnvelope(bytes, T::class.java)
+
+
+    @Throws(NotSerializableException::class)
+    fun <T : Any> getEnvelope(bytes: SerializedBytes<T>) : Envelope {
+        // Check that the lead bytes match expected header
+        if (!subArraysEqual(bytes.bytes, 0, 8, AmqpHeaderV1_0.bytes, 0))
+        {
+            throw NotSerializableException("Serialization header does not match.")
+        }
+
+        val data = Data.Factory.create()
+        val size = data.decode(ByteBuffer.wrap(bytes.bytes, 8, bytes.size - 8))
+        if (size.toInt() != bytes.size - 8)
+        {
+            throw NotSerializableException("Unexpected size of data")
+        }
+
+        return Envelope.get(data)
+    }
+
+
     /**
      * This is the main entry point for deserialization of AMQP payloads, and expects a byte sequence involving a header
      * indicating what version of Corda serialization was used, followed by an [Envelope] which carries the object to
@@ -30,18 +55,24 @@ class DeserializationInput(internal val serializerFactory: SerializerFactory = S
     @Throws(NotSerializableException::class)
     fun <T : Any> deserialize(bytes: SerializedBytes<T>, clazz: Class<T>): T {
         try {
-            // Check that the lead bytes match expected header
-            if (!subArraysEqual(bytes.bytes, 0, 8, AmqpHeaderV1_0.bytes, 0)) {
-                throw NotSerializableException("Serialization header does not match.")
-            }
-            val data = Data.Factory.create()
-            val size = data.decode(ByteBuffer.wrap(bytes.bytes, 8, bytes.size - 8))
-            if (size.toInt() != bytes.size - 8) {
-                throw NotSerializableException("Unexpected size of data")
-            }
-            val envelope = Envelope.get(data)
+            var envelope = getEnvelope(bytes)
             // Now pick out the obj and schema from the envelope.
             return clazz.cast(readObjectOrNull(envelope.obj, envelope.schema, clazz))
+        } catch(nse: NotSerializableException) {
+            throw nse
+        } catch(t: Throwable) {
+            throw NotSerializableException("Unexpected throwable: ${t.message} ${Throwables.getStackTraceAsString(t)}")
+        } finally {
+            objectHistory.clear()
+        }
+    }
+
+    @Throws(NotSerializableException::class)
+    fun <T : Any> deserializeRtnEnvelope(bytes: SerializedBytes<T>, clazz: Class<T>): Pair<T, Envelope> {
+        try {
+            val envelope = getEnvelope(bytes)
+            // Now pick out the obj and schema from the envelope.
+            return Pair (clazz.cast(readObjectOrNull(envelope.obj, envelope.schema, clazz)), envelope)
         } catch(nse: NotSerializableException) {
             throw nse
         } catch(t: Throwable) {
