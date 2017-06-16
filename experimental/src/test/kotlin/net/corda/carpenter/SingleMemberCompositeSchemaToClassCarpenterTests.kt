@@ -6,7 +6,7 @@ import org.junit.Test
 import kotlin.test.assertEquals
 
 
-class ClassCarpenterScehmaTestsSingleMemberComposite {
+class SingleMemberCompositeSchemaToClassCarpenterTests {
     private var factory = SerializerFactory()
 
     fun serialise (clazz : Any) = SerializationOutput(factory).serialize(clazz)
