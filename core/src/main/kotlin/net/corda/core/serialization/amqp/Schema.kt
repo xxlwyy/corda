@@ -176,7 +176,14 @@ data class Field(val name: String, val type: String, val requires: List<String>,
         "boolean" -> Boolean::class.javaPrimitiveType!!
         "double"  -> Double::class.javaPrimitiveType!!
         "float"   -> Double::class.javaPrimitiveType!!
-        else      -> throw IllegalArgumentException ("pants")
+        else      -> {
+            try {
+                ClassLoader.getSystemClassLoader().loadClass(type)
+            }
+            catch (e: ClassNotFoundException) {
+                throw IllegalArgumentException ("pants")
+            }
+        }
     }
 }
 

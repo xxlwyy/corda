@@ -35,10 +35,6 @@ class CompositeMemberCompositeSchemaToClassCarpenterTests {
         assert(obj.second.schema.types[0] is CompositeType)
         assert(obj.second.schema.types[1] is CompositeType)
 
-        println (obj.second.schema.types[0])
-        println (obj.second.schema.types[1])
-
-
         var amqpSchemaA : CompositeType? = null
         var amqpSchemaB : CompositeType? = null
 
@@ -63,32 +59,19 @@ class CompositeMemberCompositeSchemaToClassCarpenterTests {
         assertEquals("b",   amqpSchemaB!!.fields[1].name)
         assertEquals("int", amqpSchemaB!!.fields[1].type)
 
-
-
-
-//        assertEquals(2,     amqpSchema.fields.size)
-//        assertEquals("a",   amqpSchema.fields[0].name)
-//        assertEquals("int", amqpSchema.fields[0].type)
-//        assertEquals("b",   amqpSchema.fields[1].name)
-//        assertEquals("int", amqpSchema.fields[1].type)
+        var ccA = ClassCarpenter().build(ClassCarpenter.Schema(amqpSchemaA.name, amqpSchemaA.carpenterSchema()))
+        var ccB = ClassCarpenter().build(ClassCarpenter.Schema(amqpSchemaB.name, amqpSchemaB.carpenterSchema()))
 
         /*
+         * Since A is known to the JVM we can't constuct B with and instance of the carpented A but
+         * need to use the defined one above
+         */
+        val instanceA = ccA.constructors[0].newInstance(testA)
+        val instanceB = ccB.constructors[0].newInstance(A (testA), testB)
 
-
-
-        assertEquals(2,     amqpSchema.fields.size)
-        assertEquals("a",   amqpSchema.fields[0].name)
-        assertEquals("int", amqpSchema.fields[0].type)
-        assertEquals("b",   amqpSchema.fields[1].name)
-        assertEquals("int", amqpSchema.fields[1].type)
-
-        var pinochio = ClassCarpenter().build(ClassCarpenter.Schema(amqpSchema.name, amqpSchema.carpenterSchema()))
-
-        val p = pinochio.constructors[0].newInstance(testA, testB)
-
-        assertEquals(pinochio.getMethod("getA").invoke(p), amqpObj.a)
-        assertEquals(pinochio.getMethod("getB").invoke(p), amqpObj.b)
-        */
+        assertEquals (ccA.getMethod("getA").invoke(instanceA), amqpObj.a.a)
+        assertEquals ((ccB.getMethod("getA").invoke(instanceB) as A).a, amqpObj.a.a)
+        assertEquals (ccB.getMethod("getB").invoke(instanceB), amqpObj.b)
     }
 
 }
