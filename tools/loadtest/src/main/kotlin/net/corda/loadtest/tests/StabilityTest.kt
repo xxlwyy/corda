@@ -1,29 +1,28 @@
 package net.corda.loadtest.tests
 
 import net.corda.client.mock.Generator
-import net.corda.client.mock.pickOne
-import net.corda.client.mock.replicatePoisson
+import net.corda.core.contracts.Amount
 import net.corda.core.contracts.USD
 import net.corda.core.failure
 import net.corda.core.flows.FlowException
 import net.corda.core.getOrThrow
+import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.success
 import net.corda.core.utilities.loggerFor
+import net.corda.flows.CashFlowCommand
 import net.corda.loadtest.LoadTest
 
 object StabilityTest {
     private val log = loggerFor<StabilityTest>()
-    val crossCashTest = LoadTest<CrossCashCommand, Unit>(
-            "Creating Cash transactions randomly",
+    fun crossCashTest(batchSize: Int) = LoadTest<CrossCashCommand, Unit>(
+            "Creating Cash transactions",
             generate = { _, _ ->
-                val nodeMap = simpleNodes.associateBy { it.info.legalIdentity }
-                Generator.sequence(simpleNodes.map { node ->
-                    val possibleRecipients = nodeMap.keys.toList()
-                    val moves = 0.5 to generateMove(1, USD, node.info.legalIdentity, possibleRecipients)
-                    val exits = 0.5 to generateExit(1, USD)
-                    val command = Generator.frequency(listOf(moves, exits))
-                    command.map { CrossCashCommand(it, nodeMap[node.info.legalIdentity]!!) }
-                })
+                val payments = (1..batchSize).flatMap {
+                    simpleNodes.flatMap { payer -> simpleNodes.map { payer to it } }
+                            .filter { it.first != it.second }
+                            .map { (payer, payee) -> CrossCashCommand(CashFlowCommand.PayCash(Amount(1, USD), payee.info.legalIdentity), payer) }
+                }
+                Generator.pure(payments)
             },
             interpret = { _, _ -> },
             execute = { command ->
@@ -38,24 +37,17 @@ object StabilityTest {
             gatherRemoteState = {}
     )
 
-    val selfIssueTest = LoadTest<SelfIssueCommand, Unit>(
-            "Self issuing cash randomly",
-            generate = { _, parallelism ->
-                val generateIssue = Generator.pickOne(simpleNodes).bind { node ->
-                    generateIssue(1000, USD, notary.info.notaryIdentity, listOf(node.info.legalIdentity)).map {
-                        SelfIssueCommand(it, node)
+    fun selfIssueTest(batchSize: Int) = LoadTest<SelfIssueCommand, Unit>(
+            "Self issuing lot of cash",
+            generate = { _, _ ->
+                // Self issue cash is fast, its ok to flood the node with this command.
+                val generateIssue = (1..batchSize).flatMap {
+                    simpleNodes.map { issuer ->
+                        SelfIssueCommand(CashFlowCommand.IssueCash(Amount(100000, USD), OpaqueBytes.of(0), issuer.info.legalIdentity, notary.info.notaryIdentity), issuer)
                     }
                 }
-                Generator.replicatePoisson(parallelism.toDouble(), generateIssue).bind {
-                    // We need to generate at least one
-                    if (it.isEmpty()) {
-                        Generator.sequence(listOf(generateIssue))
-                    } else {
-                        Generator.pure(it)
-                    }
-                }
+                Generator.pure(generateIssue)
             },
-
             interpret = { _, _ -> },
             execute = { command ->
                 try {
