@@ -1,6 +1,8 @@
 package net.corda.loadtest.tests
 
 import net.corda.client.mock.Generator
+import net.corda.client.mock.flatten
+import net.corda.client.mock.replicate
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.USD
 import net.corda.core.failure
@@ -14,15 +16,13 @@ import net.corda.loadtest.LoadTest
 
 object StabilityTest {
     private val log = loggerFor<StabilityTest>()
-    fun crossCashTest(batchSize: Int) = LoadTest<CrossCashCommand, Unit>(
+    fun crossCashTest(replication: Int) = LoadTest<CrossCashCommand, Unit>(
             "Creating Cash transactions",
             generate = { _, _ ->
-                val payments = (1..batchSize).flatMap {
-                    simpleNodes.flatMap { payer -> simpleNodes.map { payer to it } }
-                            .filter { it.first != it.second }
-                            .map { (payer, payee) -> CrossCashCommand(CashFlowCommand.PayCash(Amount(1, USD), payee.info.legalIdentity), payer) }
-                }
-                Generator.pure(payments)
+                val payments = simpleNodes.flatMap { payer -> simpleNodes.map { payer to it } }
+                        .filter { it.first != it.second }
+                        .map { (payer, payee) -> CrossCashCommand(CashFlowCommand.PayCash(Amount(1, USD), payee.info.legalIdentity), payer) }
+                Generator.replicate(replication, Generator.pure(payments)).flatten()
             },
             interpret = { _, _ -> },
             execute = { command ->
@@ -37,16 +37,15 @@ object StabilityTest {
             gatherRemoteState = {}
     )
 
-    fun selfIssueTest(batchSize: Int) = LoadTest<SelfIssueCommand, Unit>(
+    fun selfIssueTest(replication: Int) = LoadTest<SelfIssueCommand, Unit>(
             "Self issuing lot of cash",
             generate = { _, _ ->
                 // Self issue cash is fast, its ok to flood the node with this command.
-                val generateIssue = (1..batchSize).flatMap {
-                    simpleNodes.map { issuer ->
-                        SelfIssueCommand(CashFlowCommand.IssueCash(Amount(100000, USD), OpaqueBytes.of(0), issuer.info.legalIdentity, notary.info.notaryIdentity), issuer)
-                    }
-                }
-                Generator.pure(generateIssue)
+                val generateIssue =
+                        simpleNodes.map { issuer ->
+                            SelfIssueCommand(CashFlowCommand.IssueCash(Amount(100000, USD), OpaqueBytes.of(0), issuer.info.legalIdentity, notary.info.notaryIdentity), issuer)
+                        }
+                Generator.replicate(replication, Generator.pure(generateIssue)).flatten()
             },
             interpret = { _, _ -> },
             execute = { command ->
