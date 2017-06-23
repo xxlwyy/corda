@@ -14,6 +14,7 @@ import net.corda.core.utilities.DUMMY_CA
 import net.corda.core.utilities.DUMMY_NOTARY
 import net.corda.node.services.MockServiceHubInternal
 import net.corda.node.services.identity.InMemoryIdentityService
+import net.corda.node.services.keys.E2ETestKeyManagementService
 import net.corda.node.services.persistence.DBCheckpointStorage
 import net.corda.node.services.statemachine.FlowLogicRefFactoryImpl
 import net.corda.node.services.statemachine.StateMachineManager
@@ -22,7 +23,6 @@ import net.corda.node.utilities.AffinityExecutor
 import net.corda.node.utilities.configureDatabase
 import net.corda.node.utilities.transaction
 import net.corda.testing.node.InMemoryMessagingNetwork
-import net.corda.testing.node.MockKeyManagementService
 import net.corda.testing.node.TestClock
 import net.corda.testing.node.makeTestDataSourceProperties
 import org.assertj.core.api.Assertions.assertThat
@@ -78,7 +78,7 @@ class NodeSchedulerServiceTest : SingletonSerializeAsToken() {
         dataSource = dataSourceAndDatabase.first
         database = dataSourceAndDatabase.second
         val identityService = InMemoryIdentityService(trustRoot = DUMMY_CA.certificate)
-        val kms = MockKeyManagementService(identityService, ALICE_KEY)
+        val kms = E2ETestKeyManagementService(identityService, setOf(ALICE_KEY))
 
         database.transaction {
             val nullIdentity = X500Name("cn=None")

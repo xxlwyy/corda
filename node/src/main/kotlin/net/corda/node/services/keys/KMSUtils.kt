@@ -30,7 +30,7 @@ fun freshCertificate(identityService: IdentityService,
                      subjectPublicKey: PublicKey,
                      issuer: PartyAndCertificate,
                      issuerSigner: ContentSigner,
-                     revocationEnabled: Boolean = false): Pair<X509CertificateHolder, CertPath> {
+                     revocationEnabled: Boolean = false): Triple<CertPath, X509CertificateHolder, PublicKey> {
     val issuerCertificate = issuer.certificate
     val window = X509Utilities.getCertificateValidityWindow(Duration.ZERO, Duration.ofDays(10 * 365), issuerCertificate)
     val ourCertificate = Crypto.createCertificate(CertificateType.IDENTITY, issuerCertificate.subject, issuerSigner, issuer.name, subjectPublicKey, window)
@@ -39,7 +39,7 @@ fun freshCertificate(identityService: IdentityService,
     identityService.registerAnonymousIdentity(AnonymousParty(subjectPublicKey),
             issuer.party,
             ourCertPath)
-    return Pair(issuerCertificate, ourCertPath)
+    return Triple(ourCertPath, issuerCertificate, subjectPublicKey)
 }
 
 fun getSigner(issuerKeyPair: KeyPair): ContentSigner {

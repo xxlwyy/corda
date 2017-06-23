@@ -488,7 +488,7 @@ interface KeyManagementService {
      * @return X.509 certificate and path to the trust root.
      */
     @Suspendable
-    fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): Pair<X509CertificateHolder, CertPath>
+    fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): Triple<CertPath, X509CertificateHolder, PublicKey>
 
     /**
      * Filter some keys down to the set that this node owns (has private keys for).

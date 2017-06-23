@@ -57,7 +57,7 @@ class E2ETestKeyManagementService(val identityService: IdentityService,
         return keyPair.public
     }
 
-    override fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): Pair<X509CertificateHolder, CertPath> {
+    override fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): Triple<CertPath, X509CertificateHolder, PublicKey> {
         return freshCertificate(identityService, freshKey(), identity, getSigner(identity.owningKey), revocationEnabled)
     }
 

@@ -13,11 +13,11 @@ import net.corda.core.serialization.OpaqueBytes
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.transactions.WireTransaction
 import net.corda.core.utilities.*
+import net.corda.node.services.keys.E2ETestKeyManagementService
 import net.corda.node.services.vault.NodeVaultService
 import net.corda.node.utilities.configureDatabase
 import net.corda.node.utilities.transaction
 import net.corda.testing.*
-import net.corda.testing.node.MockKeyManagementService
 import net.corda.testing.node.MockServices
 import net.corda.testing.node.makeTestDataSourceProperties
 import org.jetbrains.exposed.sql.Database
@@ -58,7 +58,7 @@ class CashTests {
         database = dataSourceAndDatabase.second
         database.transaction {
             services = object : MockServices() {
-                override val keyManagementService: MockKeyManagementService = MockKeyManagementService(identityService, MINI_CORP_KEY, MEGA_CORP_KEY, OUR_KEY)
+                override val keyManagementService: E2ETestKeyManagementService = E2ETestKeyManagementService(identityService, setOf(MINI_CORP_KEY, MEGA_CORP_KEY, OUR_KEY))
                 override val vaultService: VaultService = makeVaultService(dataSourceProps)
 
                 override fun recordTransactions(txs: Iterable<SignedTransaction>) {

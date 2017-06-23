@@ -9,8 +9,4 @@ import java.security.cert.CertPath
 data class AnonymisedIdentity(
         val certPath: CertPath,
         val certificate: X509CertificateHolder,
-        val identity: AnonymousParty) {
-    constructor(myIdentity: Pair<X509CertificateHolder, CertPath>) : this(myIdentity.second,
-            myIdentity.first,
-            AnonymousParty(myIdentity.second.certificates.last().publicKey))
-}
+        val identity: AnonymousParty)

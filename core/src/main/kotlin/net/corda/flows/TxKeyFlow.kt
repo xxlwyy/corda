@@ -5,6 +5,7 @@ import net.corda.core.flows.FlowLogic
 import net.corda.core.flows.InitiatedBy
 import net.corda.core.flows.InitiatingFlow
 import net.corda.core.flows.StartableByRPC
+import net.corda.core.identity.AnonymousParty
 import net.corda.core.identity.Party
 import net.corda.core.utilities.ProgressTracker
 import net.corda.core.utilities.unwrap
@@ -40,7 +41,7 @@ object TxKeyFlow {
         override fun call(): Map<Party, AnonymisedIdentity> {
             progressTracker.currentStep = AWAITING_KEY
             val myIdentityFragment = serviceHub.keyManagementService.freshKeyAndCert(serviceHub.myInfo.legalIdentityAndCert, revocationEnabled)
-            val myIdentity = AnonymisedIdentity(myIdentityFragment)
+            val myIdentity = AnonymisedIdentity(myIdentityFragment.first, myIdentityFragment.second, AnonymousParty(myIdentityFragment.third))
             val theirIdentity = receive<AnonymisedIdentity>(otherSide).unwrap { validateIdentity(it) }
             send(otherSide, myIdentity)
             return mapOf(Pair(otherSide, myIdentity),
@@ -65,7 +66,7 @@ object TxKeyFlow {
             val revocationEnabled = false
             progressTracker.currentStep = SENDING_KEY
             val myIdentityFragment = serviceHub.keyManagementService.freshKeyAndCert(serviceHub.myInfo.legalIdentityAndCert, revocationEnabled)
-            val myIdentity = AnonymisedIdentity(myIdentityFragment)
+            val myIdentity = AnonymisedIdentity(myIdentityFragment.first, myIdentityFragment.second, AnonymousParty(myIdentityFragment.third))
             send(otherSide, myIdentity)
             val theirIdentity = receive<AnonymisedIdentity>(otherSide).unwrap { validateIdentity(it) }
             return mapOf(Pair(otherSide, myIdentity),
