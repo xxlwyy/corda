@@ -15,6 +15,7 @@ import net.corda.core.utilities.DUMMY_CA
 import net.corda.core.utilities.getTestPartyAndCertificate
 import net.corda.node.services.database.HibernateConfiguration
 import net.corda.node.services.identity.InMemoryIdentityService
+import net.corda.node.services.keys.E2ETestKeyManagementService
 import net.corda.node.services.keys.freshCertificate
 import net.corda.node.services.keys.getSigner
 import net.corda.node.services.persistence.InMemoryStateMachineRecordedTransactionMappingStorage
@@ -67,7 +68,7 @@ open class MockServices(vararg val keys: KeyPair) : ServiceHub {
 
     override val storageService: TxWritableStorageService = MockStorageService()
     override final val identityService: IdentityService = InMemoryIdentityService(MOCK_IDENTITIES, trustRoot = DUMMY_CA.certificate)
-    override val keyManagementService: KeyManagementService = MockKeyManagementService(identityService, *keys)
+    override val keyManagementService: KeyManagementService = E2ETestKeyManagementService(identityService, keys.toSet())
 
     override val vaultService: VaultService get() = throw UnsupportedOperationException()
     override val vaultQueryService: VaultQueryService get() = throw UnsupportedOperationException()
@@ -83,40 +84,6 @@ open class MockServices(vararg val keys: KeyPair) : ServiceHub {
     }
 
     override fun <T : SerializeAsToken> cordaService(type: Class<T>): T = throw IllegalArgumentException("${type.name} not found")
-}
-
-class MockKeyManagementService(val identityService: IdentityService,
-                               vararg initialKeys: KeyPair) : SingletonSerializeAsToken(), KeyManagementService {
-    private val keyStore: MutableMap<PublicKey, PrivateKey> = initialKeys.associateByTo(HashMap(), { it.public }, { it.private })
-
-    override val keys: Set<PublicKey> get() = keyStore.keys
-
-    val nextKeys = LinkedList<KeyPair>()
-
-    override fun freshKey(): PublicKey {
-        val k = nextKeys.poll() ?: generateKeyPair()
-        keyStore[k.public] = k.private
-        return k.public
-    }
-
-    override fun filterMyKeys(candidateKeys: Iterable<PublicKey>): Iterable<PublicKey> = candidateKeys.filter { it in this.keys }
-
-    override fun freshKeyAndCert(identity: PartyAndCertificate, revocationEnabled: Boolean): Pair<X509CertificateHolder, CertPath> {
-        return freshCertificate(identityService, freshKey(), identity, getSigner(identity.owningKey), revocationEnabled)
-    }
-
-    private fun getSigner(publicKey: PublicKey): ContentSigner = getSigner(getSigningKeyPair(publicKey))
-
-    private fun getSigningKeyPair(publicKey: PublicKey): KeyPair {
-        val pk = publicKey.keys.first { keyStore.containsKey(it) }
-        return KeyPair(pk, keyStore[pk]!!)
-    }
-
-    override fun sign(bytes: ByteArray, publicKey: PublicKey): DigitalSignature.WithKey {
-        val keyPair = getSigningKeyPair(publicKey)
-        val signature = keyPair.sign(bytes)
-        return signature
-    }
 }
 
 class MockAttachmentStorage : AttachmentStorage {

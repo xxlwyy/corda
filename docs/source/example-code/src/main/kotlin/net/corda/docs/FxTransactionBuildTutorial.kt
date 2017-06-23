@@ -44,8 +44,7 @@ private fun gatherOurInputs(serviceHub: ServiceHub,
                             amountRequired: Amount<Issued<Currency>>,
                             notary: Party?): Pair<List<StateAndRef<Cash.State>>, Long> {
     // Collect cash type inputs
-    val queryCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED, setOf(Cash.State::class.java))
-    val cashStates = serviceHub.vaultQueryService.queryBy<Cash.State>(queryCriteria).states
+    val cashStates = serviceHub.vaultQueryService.queryBy<Cash.State>().states
     // extract our identity for convenience
     val ourKeys = serviceHub.keyManagementService.keys
     // Filter down to our own cash states with right currency and issuer
