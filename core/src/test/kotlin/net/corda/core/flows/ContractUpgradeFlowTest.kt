@@ -16,6 +16,7 @@ import net.corda.core.utilities.Emoji
 import net.corda.flows.CashIssueFlow
 import net.corda.flows.ContractUpgradeFlow
 import net.corda.flows.FinalityFlow
+import net.corda.flows.SimplifiedCashIssueFlow
 import net.corda.node.internal.CordaRPCOpsImpl
 import net.corda.node.services.startFlowPermission
 import net.corda.node.utilities.transaction
@@ -173,9 +174,9 @@ class ContractUpgradeFlowTest {
     @Test
     fun `upgrade Cash to v2`() {
         // Create some cash.
-        val result = a.services.startFlow(CashIssueFlow(Amount(1000, USD), OpaqueBytes.of(1), a.info.legalIdentity, notary)).resultFuture
+        val result = a.services.startFlow(SimplifiedCashIssueFlow(Amount(1000, USD), OpaqueBytes.of(1), a.info.legalIdentity, notary)).resultFuture
         mockNet.runNetwork()
-        val (stx, identities) = result.getOrThrow()
+        val stx = result.getOrThrow()
         val stateAndRef = stx.tx.outRef<Cash.State>(0)
         val baseState = a.database.transaction { a.vault.unconsumedStates<ContractState>().single() }
         assertTrue(baseState.state.data is Cash.State, "Contract state is old version.")
@@ -187,8 +188,7 @@ class ContractUpgradeFlowTest {
         val firstState = a.database.transaction { a.vault.unconsumedStates<ContractState>().single() }
         assertTrue(firstState.state.data is CashV2.State, "Contract state is upgraded to the new version.")
         assertEquals(Amount(1000000, USD).`issued by`(a.info.legalIdentity.ref(1)), (firstState.state.data as CashV2.State).amount, "Upgraded cash contain the correct amount.")
-        val anonymousA = identities[a.info.legalIdentity]!!.identity
-        assertEquals<Collection<AbstractParty>>(listOf(anonymousA), (firstState.state.data as CashV2.State).owners, "Upgraded cash belongs to the right owner.")
+        assertEquals<Collection<AbstractParty>>(listOf(a.info.legalIdentity), (firstState.state.data as CashV2.State).owners, "Upgraded cash belongs to the right owner.")
     }
 
     class CashV2 : UpgradedContract<Cash.State, CashV2.State> {

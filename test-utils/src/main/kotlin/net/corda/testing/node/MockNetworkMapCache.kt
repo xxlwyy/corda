@@ -6,6 +6,7 @@ import net.corda.core.identity.Party
 import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.NodeInfo
 import net.corda.core.node.ServiceHub
+import net.corda.core.node.services.IdentityService
 import net.corda.core.node.services.NetworkMapCache
 import net.corda.core.utilities.getTestPartyAndCertificate
 import net.corda.node.services.network.InMemoryNetworkMapCache
