@@ -134,7 +134,10 @@ open class InMemoryNetworkMapCache : SingletonSerializeAsToken(), NetworkMapCach
     override fun deregisterForUpdates(network: MessagingService, service: NodeInfo): ListenableFuture<Unit> {
         // Fetch the network map and register for updates at the same time
         val req = NetworkMapService.SubscribeRequest(false, network.myAddress)
-        val future = network.sendRequest<SubscribeResponse>(NetworkMapService.SUBSCRIPTION_TOPIC, req, service.addresses.first()).map {
+        // TODO It's work-around for MockNetwork and InMemoryMessaging to get rid of SingleMessageRecipient in NodeInfo.
+        //  Later whole NetworkMapService/Cache code will be restructured.
+        val partyInfo = PartyInfo.Node(service)
+        val future = network.sendRequest<SubscribeResponse>(NetworkMapService.SUBSCRIPTION_TOPIC, req, network.getAddressOfParty(partyInfo)).map {
             if (it.confirmed) Unit else throw NetworkCacheError.DeregistrationFailed()
         }
         _registrationFuture.setFuture(future)

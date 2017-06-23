@@ -299,11 +299,7 @@ class ArtemisMessagingServer(override val config: NodeConfiguration,
         fun deployBridgeToPeer(nodeInfo: NodeInfo) {
             log.debug("Deploying bridge for $queueName to $nodeInfo")
             val address = nodeInfo.addresses.first() // TODO Load balancing.
-            if (address is ArtemisPeerAddress) {
-                deployBridge(queueName, address.hostAndPort, nodeInfo.legalIdentity.name)
-            } else {
-                log.error("Don't know how to deal with $address for queue $queueName")
-            }
+            deployBridge(queueName, address, nodeInfo.legalIdentity.name)
         }
 
         when {
@@ -342,7 +338,7 @@ class ArtemisMessagingServer(override val config: NodeConfiguration,
      */
     private fun updateBridgesOnNetworkChange(change: MapChange) {
         fun gatherAddresses(node: NodeInfo): Sequence<ArtemisPeerAddress> {
-            val peerAddress = node.addresses.first() as ArtemisPeerAddress // TODO load balancing + different kinds of addreses? What about service/peer.
+            val peerAddress = NodeAddress.asPeer(node.legalIdentity.owningKey, node.addresses.first()) // TODO load balancing
             val addresses = mutableListOf(peerAddress)
             node.advertisedServices.mapTo(addresses) { NodeAddress.asService(it.identity.owningKey, peerAddress.hostAndPort) }
             return addresses.asSequence()

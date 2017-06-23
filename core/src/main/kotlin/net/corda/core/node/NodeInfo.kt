@@ -1,8 +1,8 @@
 package net.corda.core.node
 
+import com.google.common.net.HostAndPort
 import net.corda.core.identity.Party
 import net.corda.core.identity.PartyAndCertificate
-import net.corda.core.messaging.SingleMessageRecipient
 import net.corda.core.node.services.ServiceInfo
 import net.corda.core.node.services.ServiceType
 import net.corda.core.serialization.CordaSerializable
@@ -20,7 +20,7 @@ data class ServiceEntry(val info: ServiceInfo, val identity: PartyAndCertificate
 // TODO The only support for multi-IP/multi-identity nodes required as part of this project is slots in the data structures.
 //  Enhancing the node to support the rest of the feature is not a goal.
 @CordaSerializable
-data class NodeInfo(val addresses: List<SingleMessageRecipient>,
+data class NodeInfo(val addresses: List<HostAndPort>,
                     val legalIdentitiesAndCerts: Set<PartyAndCertificate>,
                     val platformVersion: Int,
                     var advertisedServices: List<ServiceEntry> = emptyList(),

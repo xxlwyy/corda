@@ -54,10 +54,11 @@ abstract class ArtemisMessagingComponent : SingletonSerializeAsToken() {
 
     interface ArtemisPeerAddress : ArtemisAddress, SingleMessageRecipient {
         val hostAndPort: HostAndPort
-    }
+    } // TODO change it to be a sealed class with NetworkMapAddress and NodeAddress
 
+    // TODO Remove it later, as we won't have network map artemis address, all communication will use HTTP.
     @CordaSerializable
-    data class NetworkMapAddress(override val hostAndPort: HostAndPort) : SingleMessageRecipient, ArtemisPeerAddress {
+    data class NetworkMapAddress(override val hostAndPort: HostAndPort) : ArtemisPeerAddress {
         override val queueName: String get() = NETWORK_MAP_QUEUE
     }
 
